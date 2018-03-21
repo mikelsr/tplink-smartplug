@@ -1,0 +1,66 @@
+#!/usr/bin/env python2.7
+import socket
+from sys import argv
+from json import dumps, loads
+from pprint import pprint
+
+# Predefined Smart Plug Commands
+# For a full list of commands, consult tplink_commands.txt
+command_list = {'info'     : '{"system":{"get_sysinfo":{}}}',
+			'on'       : '{"system":{"set_relay_state":{"state":1}}}',
+			'off'      : '{"system":{"set_relay_state":{"state":0}}}',
+			'cloudinfo': '{"cnCloud":{"get_info":{}}}',
+			'wlanscan' : '{"netif":{"get_scaninfo":{"refresh":0}}}',
+			'time'     : '{"time":{"get_time":{}}}',
+			'schedule' : '{"schedule":{"get_rules":{}}}',
+			'countdown': '{"count_down":{"get_rules":{}}}',
+			'antitheft': '{"anti_theft":{"get_rules":{}}}',
+			'reboot'   : '{"system":{"reboot":{"delay":1}}}',
+			'reset'    : '{"system":{"reset":{"delay":1}}}'
+}
+
+# Encryption and Decryption of TP-Link Smart Home Protocol
+# XOR Autokey Cipher with starting key = 171
+def encrypt(string):
+	key = 171
+	result = "\0\0\0\0"
+	for i in string:
+		a = key ^ ord(i)
+		key = a
+		result += chr(a)
+	return result
+
+def decrypt(string):
+	key = 171
+	result = ""
+	for i in string:
+		a = key ^ ord(i)
+		key = ord(i)
+		result += chr(a)
+	return result
+
+
+def str_hook(obj):
+    return {k.encode('utf-8') if isinstance(k,unicode) else k :
+            v.encode('utf-8') if isinstance(v, unicode) else v
+            for k,v in obj}
+
+
+def send_command(command, ip, port=9999):
+	"""
+		command: dictionary of command json
+	"""
+	try:
+		sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		sock_tcp.connect((ip, port))
+		sock_tcp.send(encrypt(dumps(command).encode('utf-8')))
+		data = sock_tcp.recv(2048)
+		sock_tcp.close()
+		return dumps(loads(decrypt(data[4:]), object_pairs_hook=str_hook))
+
+	except socket.error:
+		return dumps({})
+
+
+if __name__ == "__main__":
+	print(send_command({"emeter":{"get_realtime":{}}}, argv[1]))
