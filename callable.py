@@ -56,11 +56,17 @@ def send_command(command, ip, port=9999):
 		sock_tcp.send(encrypt(dumps(command).encode('utf-8')))
 		data = sock_tcp.recv(2048)
 		sock_tcp.close()
-		return dumps(loads(decrypt(data[4:]), object_pairs_hook=str_hook))
+		# return dumps(loads(decrypt(data[4:]), object_pairs_hook=str_hook))
+		response = loads(decrypt(data[4:]), object_pairs_hook=str_hook)
+		return {
+			"power": response["emeter"]["get_realtime"]["power"],
+			"relay_state": response["system"]["get_sysinfo"]["relay_state"]
+		}
 
 	except socket.error:
-		return dumps({})
+		return {}
 
 
 if __name__ == "__main__":
-	print(send_command({"emeter":{"get_realtime":{}}}, argv[1]))
+	command = {"emeter": {"get_realtime": {}}, "system": {"get_sysinfo": {}}}
+	print(dumps(send_command(command, argv[1])))
