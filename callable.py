@@ -60,7 +60,9 @@ def send_command(command, ip, port=9999):
 		response = loads(decrypt(data[4:]), object_pairs_hook=str_hook)
 		return {
 			"power": response["emeter"]["get_realtime"]["power"],
-			"relay_state": response["system"]["get_sysinfo"]["relay_state"]
+			"relay_state": response["system"]["get_sysinfo"]["relay_state"],
+			"power_err_code": response["emeter"]["get_realtime"]["err_code"],
+			"relay_state_err_code": response["system"]["get_sysinfo"]["err_code"]
 		}
 
 	except socket.error:
