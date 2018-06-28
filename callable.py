@@ -21,7 +21,7 @@ command_list = {'info'     : '{"system":{"get_sysinfo":{}}}',
 
 # Encryption and Decryption of TP-Link Smart Home Protocol
 # XOR Autokey Cipher with starting key = 171
-def encrypt(string):
+def encrypt_prev_1_0_10(string):
 	key = 171
 	result = "\0\0\0\0"
 	for i in string:
@@ -29,6 +29,21 @@ def encrypt(string):
 		key = a
 		result += chr(a)
 	return result
+
+
+def encrypt_post_1_0_10(string):
+	key = 171
+	result = "\0\0\0"+chr(len(string))
+	for i in string:
+		a = key ^ ord(i)
+		key = a
+		result += chr(a)
+	return result
+
+
+methods = [encrypt_prev_1_0_10, encrypt_post_1_0_10]
+current_method = 0
+
 
 def decrypt(string):
 	key = 171
@@ -53,10 +68,16 @@ def send_command(command, ip, port=9999):
 	try:
 		sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		sock_tcp.connect((ip, port))
-		sock_tcp.send(encrypt(dumps(command).encode('utf-8')))
+		sock_tcp.send(methods[current_method](dumps(command).encode('utf-8')))
 		data = sock_tcp.recv(2048)
 		sock_tcp.close()
 		# return dumps(loads(decrypt(data[4:]), object_pairs_hook=str_hook))
+		if len(data) == 0:
+			if current_method < len(methods):
+				current_method += 1
+				return send_command(command, ip)
+			else:
+				return {}
 		response = loads(decrypt(data[4:]), object_pairs_hook=str_hook)
 		return {
 			"power": response["emeter"]["get_realtime"]["power"],
