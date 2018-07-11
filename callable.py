@@ -65,6 +65,7 @@ def send_command(command, ip, port=9999):
 	"""
 		command: dictionary of command json
 	"""
+	global current_method
 	try:
 		sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		sock_tcp.connect((ip, port))
@@ -80,7 +81,7 @@ def send_command(command, ip, port=9999):
 				return {}
 		response = loads(decrypt(data[4:]), object_pairs_hook=str_hook)
 		return {
-			"power": response["emeter"]["get_realtime"]["power"],
+			"power": response["emeter"]["get_realtime"]["power"] if current_method == 0 else response["emeter"]["get_realtime"]["power_mw"]/1000,
 			"relay_state": response["system"]["get_sysinfo"]["relay_state"],
 			"power_err_code": response["emeter"]["get_realtime"]["err_code"],
 			"relay_state_err_code": response["system"]["get_sysinfo"]["err_code"]
