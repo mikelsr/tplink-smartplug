@@ -77,7 +77,7 @@ def send_command(command, ip, port=9999):
                 return {}
         response = loads(decrypt(data[4:]), object_pairs_hook=str_hook)
         return {
-            "power": response["emeter"]["get_realtime"]["power"] if current_method == 2 else response["emeter"]["get_realtime"]["power_mw"]/1000,
+            "power": response["emeter"]["get_realtime"]["power"] if current_method != 1 else response["emeter"]["get_realtime"]["power_mw"]/1000,
             "relay_state": response["system"]["get_sysinfo"]["relay_state"],
             "power_err_code": response["emeter"]["get_realtime"]["err_code"],
             "relay_state_err_code": response["system"]["get_sysinfo"]["err_code"]
@@ -89,4 +89,4 @@ def send_command(command, ip, port=9999):
 
 if __name__ == "__main__":
     command = {"emeter": {"get_realtime": {}}, "system": {"get_sysinfo": {}}}
-    print(dumps(send_command(command, argv[1])))
+    print dumps(send_command(command, argv[1]))
