@@ -24,48 +24,53 @@ import argparse
 
 version = 0.1
 
+
 # Check if IP is valid
 def validIP(ip):
-	try:
-		socket.inet_pton(socket.AF_INET, ip)
-	except socket.error:
-		parser.error("Invalid IP Address.")
-	return ip
+    try:
+        socket.inet_pton(socket.AF_INET, ip)
+    except socket.error:
+        parser.error("Invalid IP Address.")
+    return ip
+
 
 # Predefined Smart Plug Commands
 # For a full list of commands, consult tplink_commands.txt
-commands = {'info'     : '{"system":{"get_sysinfo":{}}}',
-			'on'       : '{"system":{"set_relay_state":{"state":1}}}',
-			'off'      : '{"system":{"set_relay_state":{"state":0}}}',
-			'cloudinfo': '{"cnCloud":{"get_info":{}}}',
-			'wlanscan' : '{"netif":{"get_scaninfo":{"refresh":0}}}',
-			'time'     : '{"time":{"get_time":{}}}',
-			'schedule' : '{"schedule":{"get_rules":{}}}',
-			'countdown': '{"count_down":{"get_rules":{}}}',
-			'antitheft': '{"anti_theft":{"get_rules":{}}}',
-			'reboot'   : '{"system":{"reboot":{"delay":1}}}',
-			'reset'    : '{"system":{"reset":{"delay":1}}}'
-}
+command_list = {'info': '{"system":{"get_sysinfo":{}}}',
+                'on': '{"system":{"set_relay_state":{"state":1}}}',
+                'off': '{"system":{"set_relay_state":{"state":0}}}',
+                'cloudinfo': '{"cnCloud":{"get_info":{}}}',
+                'wlanscan': '{"netif":{"get_scaninfo":{"refresh":0}}}',
+                'time': '{"time":{"get_time":{}}}',
+                'schedule': '{"schedule":{"get_rules":{}}}',
+                'countdown': '{"count_down":{"get_rules":{}}}',
+                'antitheft': '{"anti_theft":{"get_rules":{}}}',
+                'reboot': '{"system":{"reboot":{"delay":1}}}',
+                'reset': '{"system":{"reset":{"delay":1}}}'
+                }
+
 
 # Encryption and Decryption of TP-Link Smart Home Protocol
 # XOR Autokey Cipher with starting key = 171
 def encrypt(string):
-	key = 171
-	result = "\0\0\0\0"
-	for i in string:
-		a = key ^ ord(i)
-		key = a
-		result += chr(a)
-	return result
+    key = 171
+    result = "\0\0\0\0"
+    for i in string:
+        a = key ^ ord(i)
+        key = a
+        result += chr(a)
+    return result
+
 
 def decrypt(string):
-	key = 171
-	result = ""
-	for i in string:
-		a = key ^ ord(i)
-		key = ord(i)
-		result += chr(a)
-	return result
+    key = 171
+    result = ""
+    for i in string:
+        a = key ^ ord(i)
+        key = ord(i)
+        result += chr(a)
+    return result
+
 
 # Parse commandline arguments
 parser = argparse.ArgumentParser(description="TP-Link Wi-Fi Smart Plug Client v" + str(version))
@@ -79,21 +84,19 @@ args = parser.parse_args()
 ip = args.target
 port = 9999
 if args.command is None:
-	cmd = args.json
+    cmd = args.json
 else:
-	cmd = commands[args.command]
-
-
+    cmd = commands[args.command]
 
 # Send command and receive reply
 try:
-	sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	sock_tcp.connect((ip, port))
-	sock_tcp.send(encrypt(cmd))
-	data = sock_tcp.recv(2048)
-	sock_tcp.close()
+    sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock_tcp.connect((ip, port))
+    sock_tcp.send(encrypt(cmd))
+    data = sock_tcp.recv(2048)
+    sock_tcp.close()
 
-	print "Sent:     ", cmd
-	print "Received: ", decrypt(data[4:])
+    print "Sent:     ", cmd
+    print "Received: ", decrypt(data[4:])
 except socket.error:
-	quit("Cound not connect to host " + ip + ":" + str(port))
+    quit("Cound not connect to host " + ip + ":" + str(port))
