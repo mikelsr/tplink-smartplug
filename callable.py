@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 import socket
 from struct import pack
 from sys import argv
@@ -9,21 +9,21 @@ from json import dumps, loads
 # XOR Autokey Cipher with starting key = 171
 def encrypt_prev_1_0_10(string):
     key = 171
-    result = "\0\0\0\0"
+    result = b'\0\0\0\0'
     for i in string:
-        a = key ^ ord(i)
+        a = key ^ i
         key = a
-        result += chr(a)
+        result += a
     return result
 
 
 def encrypt_post_1_0_10(string):
     key = 171
-    result = "\0\0\0"+chr(len(string))
+    result = b'\0\0\0'+bytes(len(string))
     for i in string:
-        a = key ^ ord(i)
+        a = key ^ i
         key = a
-        result += chr(a)
+        result += bytes([a])
     return result
 
 
@@ -31,9 +31,9 @@ def encrypt_official(string):
     key = 171
     result = pack('>I', len(string))
     for i in string:
-        a = key ^ ord(i)
+        a = key ^ i
         key = a
-        result += chr(a)
+        result += bytes([a])
     return result
 
 
@@ -43,18 +43,12 @@ current_method = 0
 
 def decrypt(string):
     key = 171
-    result = ""
+    result = b''
     for i in string:
-        a = key ^ ord(i)
-        key = ord(i)
-        result += chr(a)
+        a = key ^ i
+        key = i
+        result += bytes([a])
     return result
-
-
-def str_hook(obj):
-    return {k.encode('utf-8') if isinstance(k, unicode) else k:
-            v.encode('utf-8') if isinstance(v, unicode) else v
-            for k, v in obj}
 
 
 def send_command(command, ip, port=9999):
@@ -68,14 +62,13 @@ def send_command(command, ip, port=9999):
         sock_tcp.send(methods[current_method](dumps(command).encode('utf-8')))
         data = sock_tcp.recv(2048)
         sock_tcp.close()
-        # return dumps(loads(decrypt(data[4:]), object_pairs_hook=str_hook))
         if len(data) == 0:
             if current_method < len(methods):
                 current_method += 1
                 return send_command(command, ip)
             else:
                 return {}
-        response = loads(decrypt(data[4:]), object_pairs_hook=str_hook)
+        response = loads(decrypt(data[4:]))
         power_key = "power" if "power" in response["emeter"]["get_realtime"].keys() else "power_mw"
         power = response["emeter"]["get_realtime"][power_key]
         if power_key == "power_mw":
@@ -93,4 +86,4 @@ def send_command(command, ip, port=9999):
 
 if __name__ == "__main__":
     command = {"emeter": {"get_realtime": {}}, "system": {"get_sysinfo": {}}}
-    print dumps(send_command(command, argv[1]))
+    print(dumps(send_command(command, argv[1])))
