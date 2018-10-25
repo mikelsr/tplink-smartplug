@@ -54,27 +54,7 @@ command_list = {"info": '{"system": {"get_sysinfo": {}}}',
 
 # Encryption and Decryption of TP-Link Smart Home Protocol
 # XOR Autokey Cipher with starting key = 171
-def encrypt_prev_1_0_10(string):
-    key = 171
-    result = b'\0\0\0\0'
-    for i in string:
-        a = key ^ i
-        key = a
-        result += bytes([a])
-    return result
-
-
-def encrypt_post_1_0_10(string):
-    key = 171
-    result = b'\0\0\0'+bytes(len(string))
-    for i in string:
-        a = key ^ i
-        key = a
-        result += bytes([a])
-    return result
-
-
-def encrypt_official(string):
+def encrypt(string):
     key = 171
     result = pack('>I', len(string))
     for i in string:
@@ -82,13 +62,6 @@ def encrypt_official(string):
         key = a
         result += bytes([a])
     return result
-
-
-methods = {
-    "1": encrypt_official,
-    "2": encrypt_post_1_0_10,
-    "3": encrypt_prev_1_0_10
-}
 
 
 def decrypt(string):
@@ -104,7 +77,6 @@ def decrypt(string):
 # Parse commandline arguments
 parser = argparse.ArgumentParser(description="TP-Link Wi-Fi Smart Plug Client v" + str(version))
 parser.add_argument("-t", "--target", metavar="<ip>", required=True, help="Target IP Address", type=validIP)
-parser.add_argument("-m", "--method", metavar="<method>", required=False, help="encryption method to be used", choices=["1", "2", "3"])
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument("-c", "--command", metavar="<command>", help="Preset command to send. Choices are: "+", ".join(command_list), choices=command_list)
 group.add_argument("-j", "--json", metavar="<JSON string>", help="Full JSON string of command to send")
@@ -112,7 +84,6 @@ args = parser.parse_args()
 
 # Set target IP, port and command to send
 ip = args.target
-method = args.method
 
 port = 9999
 if args.command is None:
@@ -120,28 +91,22 @@ if args.command is None:
 else:
     cmd = command_list[args.command]
 
-if args.method is not None:
-    methods = {method: methods[method]}
-
 if type(cmd) is str:
     cmd = loads(cmd)
 
-err = None
-for encrypt in methods.values():
-    # Send command and receive reply
-    try:
-        sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock_tcp.connect((ip, port))
-        sock_tcp.send(encrypt(dumps(cmd).encode('utf-8')))
-        data = sock_tcp.recv(2048)
-        sock_tcp.close()
-        if len(data) == 0:
-            err = "Received no data"
-            continue
-        print("Sent:     ", cmd)
-        print("Received: ", decrypt(data[4:]).decode("utf-8"))
-        exit(0)
-    except socket.error as serr:
-        err = serr
+# Send command and receive reply
+try:
+    sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock_tcp.connect((ip, port))
+    sock_tcp.send(encrypt(dumps(cmd).encode('utf-8')))
+    data = sock_tcp.recv(2048)
+    sock_tcp.close()
+    if len(data) == 0:
+        err = "Received no data"
+    print("Sent:     ", cmd)
+    print("Received: ", decrypt(data[4:]).decode("utf-8"))
+    exit(0)
+except socket.error as serr:
+    err = serr
 
 print("Error: %s" % err)

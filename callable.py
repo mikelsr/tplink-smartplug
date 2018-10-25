@@ -7,27 +7,7 @@ from json import dumps, loads
 
 # Encryption and Decryption of TP-Link Smart Home Protocol
 # XOR Autokey Cipher with starting key = 171
-def encrypt_prev_1_0_10(string):
-    key = 171
-    result = b'\0\0\0\0'
-    for i in string:
-        a = key ^ i
-        key = a
-        result += a
-    return result
-
-
-def encrypt_post_1_0_10(string):
-    key = 171
-    result = b'\0\0\0'+bytes(len(string))
-    for i in string:
-        a = key ^ i
-        key = a
-        result += bytes([a])
-    return result
-
-
-def encrypt_official(string):
+def encrypt(string):
     key = 171
     result = pack('>I', len(string))
     for i in string:
@@ -35,10 +15,6 @@ def encrypt_official(string):
         key = a
         result += bytes([a])
     return result
-
-
-methods = [encrypt_official, encrypt_prev_1_0_10, encrypt_post_1_0_10]
-current_method = 0
 
 
 def decrypt(string):
@@ -55,19 +31,14 @@ def send_command(command, ip, port=9999):
     """
         command: dictionary of command json
     """
-    global current_method
     try:
         sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock_tcp.connect((ip, port))
-        sock_tcp.send(methods[current_method](dumps(command).encode('utf-8')))
+        sock_tcp.send(encrypt(dumps(command).encode('utf-8')))
         data = sock_tcp.recv(2048)
         sock_tcp.close()
         if len(data) == 0:
-            if current_method < len(methods):
-                current_method += 1
-                return send_command(command, ip)
-            else:
-                return {}
+            return {}
         response = loads(decrypt(data[4:]))
         power_key = "power" if "power" in response["emeter"]["get_realtime"].keys() else "power_mw"
         power = response["emeter"]["get_realtime"][power_key]
